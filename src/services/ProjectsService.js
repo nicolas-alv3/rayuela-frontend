@@ -1,25 +1,42 @@
-import axios from "axios";
 import RayuelaService from "@/services/RayuelaService";
 
-class ProjectsService extends RayuelaService{
-    getProjects() {
-        return axios.get(this.baseUrl + `/projects/`, this.getHeaders())
-            .then((response) => response.data);
+class ProjectsService extends RayuelaService {
+    async getProjects() {
+        if (localStorage.getItem('role')!== 'Admin') {
+            return this.get(`/volunteer/projects/`)
+        }
     }
 
     async getDiffProjects() {
-        return axios.get(this.baseUrl + `/projects/`, this.getHeaders())
-            .then(res => res.data)
+        return this.get(`/projects/`)
+            .then(response => response.data)
     }
 
-    async delete(projectId) {
-        return axios.delete(this.baseUrl + `/projects/${projectId}`, this.getHeaders())
-            .then(res => res.data)
+    async toggleAvailability(projectId) {
+        return this.post(`/projects/availability/${projectId}`, null)
+            .then(data => data)
     }
 
     async getProjectById(projectId) {
-        return axios.get(this.baseUrl + `/projects/${projectId}`, this.getHeaders())
-            .then(res => res.data);
+        return this.get(`/projects/${projectId}`)
+            .then(data => data);
+    }
+
+    async getAdminProjects() {
+        return this.get(`/projects/`)
+            .then((data) => data.filter(p => p.ownerId === localStorage.getItem("user_id")));
+    }
+
+    async createProject(project) {
+        return this.post('/projects', project);
+    }
+
+    async updateProject(project) {
+        return this.patch(`/projects/${project._id}`, project);
+    }
+
+    async toggleSubscription(projectId) {
+        return this.post('/volunteer/subscription/' + projectId);
     }
 }
 
