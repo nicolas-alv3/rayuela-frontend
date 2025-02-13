@@ -1,71 +1,115 @@
 <script setup>
-import {onMounted, ref} from 'vue'
-import {useRouter} from 'vue-router';
-import {toast} from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
-import ProjectCard from "@/components/ProjectCard.vue";
-import ViewMoreButton from "@/components/ViewMoreButton.vue";
-import AuthService from "@/services/AuthService";
+import {onMounted, ref} from 'vue';
 import ProjectsService from "@/services/ProjectsService";
+import {toast} from "vue3-toastify";
+import router from "@/router";
 
-const router = useRouter()
-const complete_name = ref("")
-const profile_image = ref("")
-const projects_user = ref([])
-// TODO: pasar mensajes a locale
+const projects_user = ref([]);
+
 onMounted(async () => {
-  if (!localStorage.getItem("token")) {
-    router.push({path: '/login'})
-  }
+  projects_user.value = await ProjectsService.getProjects();
+});
 
-  if (localStorage.getItem("msg_login") === "1") {
-    toast.success("Sesión iniciada correctamente", {autoClose: 3000});
-    localStorage.removeItem("msg_login")
-  }
-  if (localStorage.getItem("token")) {
-    user_data()
-  }
-  const projects = await ProjectsService.getProjects();
-  projects_user.value = projects.slice(0, 3);
-})
-
-async function user_data() {
-  AuthService.getUser()
-      .then(response => {
-        complete_name.value = response.complete_name
-        profile_image.value = response.profile_image
+function subscribe(project) {
+  ProjectsService.toggleSubscription(project._id)
+      .then(() => {
+        toast.success("Perfecto!");
       })
-      .catch(error => {
-        console.log("AXIOS CATCH: " + error)
-      })
+      .then(async () => projects_user.value = await ProjectsService.getProjects())
+      .catch(() => toast.error('Hubo un error al inscribirse'));
 }
 
+const seeProjectDetails = (id) => {
+  router.push(`/project/${id}/view`);
+}
 </script>
-
 <template>
-  <div class="container" style="flex-direction: column">
-    <h2 class="subtitle">Mis proyectos</h2>
-    <div class="container">
-      <div v-for="project in projects_user" :key="project.id">
-        <ProjectCard :project="project"/>
-      </div>
-      <ViewMoreButton/>
-    </div>
+  <div class="container">
+    <h2 class="subtitle mb-4">Proyectos</h2>
+    <v-container>
+      <v-row>
+        <v-col
+            v-for="(project, index) in projects_user"
+            :key="index"
+            cols="12"
+            sm="6"
+            md="4"
+        >
+          <v-card class="mx-auto cursor-pointer" max-width="400">
+            <div @click="seeProjectDetails(project._id)">
+              <div class="image-container">
+                <v-img
+                    class="project-image"
+                    height="200"
+                    :src="project.image || 'https://via.placeholder.com/400'"
+                    cover
+                />
+                <div class="image-overlay">
+                  <v-card-title class="overlay-title">{{ project.name }}</v-card-title>
+                </div>
+              </div>
 
+              <v-card-subtitle class="pt-2">
+                {{ project.available ? 'Disponible' : 'No disponible' }}
+              </v-card-subtitle>
+
+              <v-card-text>
+                <div>{{ (project.description?.slice(0, 50) || 'Sin descripción disponible') + '...' }}</div>
+                <div v-if="project.web">
+                  <a :href="project.web" target="_blank" class="text-decoration-none">Visitar sitio web</a>
+                </div>
+              </v-card-text>
+
+            </div>
+            <v-card-actions>
+              <v-btn
+                  :color="project.subscribed ? 'red' : 'green'"
+                  @click="subscribe(project)"
+              >
+                {{ project.subscribed ? 'Darse de baja' : 'Inscribirse' }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
   </div>
-
 </template>
 
 <style>
 .container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
   padding: 1rem;
 }
 
-.card image {
-  max-width: 100%;
+.subtitle {
+  font-size: 1.5rem;
+  font-weight: bold;
 }
 
+.image-container {
+  position: relative;
+}
+
+.project-image {
+  display: block;
+}
+
+.image-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.1));
+  display: flex;
+  align-items: flex-end;
+  justify-content: start;
+  padding: 10px;
+}
+
+.overlay-title {
+  color: white;
+  font-weight: bold;
+  text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.6);
+}
 </style>
