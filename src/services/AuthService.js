@@ -1,29 +1,45 @@
-import axios from "axios";
 import RayuelaService from "@/services/RayuelaService";
 
 class AuthService extends RayuelaService {
     loginWithPw(user) {
-        return axios.post(this.baseUrl + "/auth/login/", user)
-            .then((response) => {
+        return this.post("/auth/login/", user)
+            .then((data) => {
                 localStorage.setItem("msg_login", "1")
-                localStorage.setItem("token", response.data.access_token)
+                localStorage.setItem("token", data.access_token)
                 localStorage.setItem("username", user.username)
-                return response.data;
-            })
+                return data;
+            });
     }
 
     register(user) {
-        return axios.post(this.baseUrl + "/auth/register/", user)
+        return this.post("/auth/register/", user);
     }
 
     getUser() {
-        return axios.get(this.baseUrl + "/user", this.getHeaders())
-            .then(res => {
-                localStorage.setItem("complete_name", res.data.complete_name)
-                localStorage.setItem("profile_image", res.data.profile_image)
-                localStorage.setItem("role", res.data.role)
-                return res.data
+        return this.get('/user')
+            .then(data => {
+                localStorage.setItem("user_id", data._id)
+                localStorage.setItem("complete_name", data._complete_name)
+                localStorage.setItem("profile_image", data._profile_image)
+                localStorage.setItem("role", data._role)
+                localStorage.setItem("badges", data._badges)
+                localStorage.setItem("points", data._points)
+                return data
+            }).catch(() => {
+                console.log('Unable to get user')
             })
+    }
+
+    async sendResetPasswordEmail(email) {
+        return this.post("/auth/forgot-password", {email})
+    }
+
+    async recoverPassword(token, newPassword) {
+        return this.post("/auth/recover-password", {token, newPassword})
+    }
+
+    async verifyUser(token) {
+        return this.post("/auth/verify-email", {token})
     }
 }
 
