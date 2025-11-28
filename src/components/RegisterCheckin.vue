@@ -7,7 +7,7 @@
     </v-btn>
 
     <!-- Modal principal para registrar el check-in -->
-    <v-dialog v-model="showModal" persistent max-width="600px">
+    <v-dialog v-model="showModal" persistent max-width="800px">
       <v-card>
         <v-card-title>
           <span class="text-h6">Registrar Check-in</span>
@@ -24,31 +24,28 @@
           <v-form v-else>
             <!-- Sección: Ubicación -->
             <h4>Ubicación</h4>
-            <v-row>
-              <v-col cols="6">
-                <v-text-field
-                    label="Latitud"
-                    v-model="form.latitude"
-                    type="number"
-                    :readonly="!manualLocation"
-                    outlined
-                ></v-text-field>
-              </v-col>
-              <v-col cols="6">
-                <v-text-field
-                    label="Longitud"
-                    type="number"
-                    v-model="form.longitude"
-                    :readonly="!manualLocation"
-                    outlined
-                ></v-text-field>
-              </v-col>
-              <v-col cols="12" class="text-right">
-                <v-btn variant="plain" v-if="props.manualLocationEnabled" @click="toggleManualLocation">
-                  {{ manualLocation ? 'Usar ubicación automática' : 'Ingresar ubicación manualmente' }}
-                </v-btn>
-              </v-col>
-            </v-row>
+
+            <!-- Mapa interactivo con pin arrastrable -->
+            <div style="display:flex;gap:16px;flex-direction:column;">
+              <div style="position:relative;">
+                <div ref="mapRef" class="checkin-map"></div>
+
+                <button
+                  type="button"
+                  @click="centerOnCurrentLocation"
+                  style="position:absolute; top:10px; right:10px; z-index: 12;"
+                  class="v-btn v-btn--icon"
+                  title="Centrar en mi ubicación"
+                >
+                  <v-icon>mdi-crosshairs-gps</v-icon>
+                </button>
+
+                <div style="position:absolute; bottom:10px; left:10px; background: rgba(255,255,255,0.95); padding:8px;border-radius:6px; z-index:12; font-size:13px;">
+                  <span v-if="props.manualLocationEnabled">Arrastra el marcador o haz click para indicar dónde registrar el check-in.</span>
+                  <span v-else>Esta es la ubicación que se registrará.</span>
+                </div>
+              </div>
+            </div>
 
             <!-- Sección: Fecha y Hora -->
             <h4 class="mt-4">Fecha y Hora</h4>
@@ -127,11 +124,10 @@
 </template>
 
 <script setup>
-import {ref, watch} from 'vue';
+import {ref, watch, nextTick, onUnmounted} from 'vue';
 import {useRoute} from 'vue-router';
 import {toast} from "vue3-toastify";
 import GamificationService from "@/services/GamificationService";
-
 
 const emit = defineEmits(['modalClosed']);
 const route = useRoute();
@@ -140,7 +136,7 @@ const showModal = ref(false);
 const serviceResponse = ref(null);
 const manualLocation = ref(false);
 const loadingLocation = ref(false);
-const loadingCheckin = ref(false); // Spinner para el registro de check-in
+const loadingCheckin = ref(false);
 const props = defineProps({
   taskTypes: Array,
   manualLocationEnabled: Boolean
@@ -154,11 +150,37 @@ const form = ref({
   rating: 0,
 });
 
+// --- Nuevas referencias y variables para el mapa ---
+import 'ol/ol.css';
+import {Map, View} from 'ol';
+import TileLayer from 'ol/layer/Tile';
+import {OSM} from 'ol/source';
+import VectorSource from 'ol/source/Vector';
+import VectorLayer from 'ol/layer/Vector';
+import Feature from 'ol/Feature';
+import Point from 'ol/geom/Point';
+import {Style, Fill, Stroke, Circle as OlCircle} from 'ol/style';
+import {fromLonLat, toLonLat} from 'ol/proj';
+import Translate from 'ol/interaction/Translate';
+import Collection from 'ol/Collection';
+
+const mapRef = ref(null);
+let map = null;
+let markerFeature = null;
+let markerLayer = null;
+let translateInteraction = null;
+let clickHandler = null; // <-- nuevo
+// -----------------------------------------------------------------
+
 const openModal = () => {
   resetForm();
   showModal.value = true;
   loadingLocation.value = true;
   getCurrentLocation();
+  // Inicializar mapa después de que el modal y DOM estén listos
+  nextTick(() => {
+    initializeMap();
+  });
 };
 
 const toggleManualLocation = () => {
@@ -181,9 +203,15 @@ const getCurrentLocation = () => {
         form.value.latitude = position.coords.latitude.toFixed(6);
         form.value.longitude = position.coords.longitude.toFixed(6);
         loadingLocation.value = false;
+        // Si el mapa ya está inicializado, centrar y mover el pin
+        if (markerFeature && map) {
+          const coords = fromLonLat([parseFloat(form.value.longitude), parseFloat(form.value.latitude)]);
+          markerFeature.getGeometry().setCoordinates(coords);
+          map.getView().setCenter(coords);
+        }
       },
       () => {
-        toast.info('No se pudo obtener la ubicación. Por favor ingrésela manualmente.');
+        toast.info('No se pudo obtener la ubicación. Podés mover el pin en el mapa.');
         manualLocation.value = true;
         loadingLocation.value = false;
       },
@@ -201,10 +229,152 @@ const resetForm = () => {
   manualLocation.value = false;
 };
 
+// Inicializa un mapa simple con un marcador arrastrable
+const initializeMap = () => {
+  if (map || !mapRef.value) return;
+
+  // centro por defecto (si no hay coords)
+  const defaultCoords = fromLonLat([-58.3816, -34.6037]); // Buenos Aires como fallback
+
+  const centerCoords = (form.value.longitude && form.value.latitude)
+      ? fromLonLat([parseFloat(form.value.longitude), parseFloat(form.value.latitude)])
+      : defaultCoords;
+
+  const tileLayer = new TileLayer({
+    source: new OSM()
+  });
+
+  markerFeature = new Feature({
+    geometry: new Point(centerCoords)
+  });
+
+  markerFeature.setStyle(new Style({
+    image: new OlCircle({
+      radius: 12, // marcador más visible
+      fill: new Fill({color: '#1976D2'}),
+      stroke: new Stroke({color: 'white', width: 2})
+    })
+  }));
+
+  const source = new VectorSource({
+    features: [markerFeature]
+  });
+
+  markerLayer = new VectorLayer({
+    source
+  });
+
+  map = new Map({
+    target: mapRef.value,
+    layers: [tileLayer, markerLayer],
+    view: new View({
+      center: centerCoords,
+      zoom: 16
+    })
+  });
+
+  // Solo permitir modificar la ubicación si el proyecto lo tiene habilitado
+  if (props.manualLocationEnabled) {
+    // Interacción para arrastrar el marcador
+    translateInteraction = new Translate({
+      features: new Collection([markerFeature])
+    });
+
+    translateInteraction.on('translating', () => {
+      const geom = markerFeature.getGeometry();
+      const lonlat = toLonLat(geom.getCoordinates());
+      form.value.latitude = lonlat[1].toFixed(6);
+      form.value.longitude = lonlat[0].toFixed(6);
+    });
+
+    translateInteraction.on('translateend', () => {
+      const geom = markerFeature.getGeometry();
+      const lonlat = toLonLat(geom.getCoordinates());
+      form.value.latitude = lonlat[1].toFixed(6);
+      form.value.longitude = lonlat[0].toFixed(6);
+    });
+
+    map.addInteraction(translateInteraction);
+
+    // Permitir mover el marcador haciendo click en el mapa (UX esperado)
+    clickHandler = (evt) => {
+      if (!markerFeature) return;
+      const coord = evt.coordinate;
+      markerFeature.getGeometry().setCoordinates(coord);
+      const lonlat = toLonLat(coord);
+      form.value.latitude = lonlat[1].toFixed(6);
+      form.value.longitude = lonlat[0].toFixed(6);
+    };
+    map.on('singleclick', clickHandler);
+  }
+
+  // Forzar redimensionado después de que el modal esté visible (evita lienzo en blanco)
+  setTimeout(() => {
+    try { map.updateSize(); } catch (e) { /* noop */ }
+  }, 250);
+
+  // Si no teníamos coords iniciales, rellenarlas desde el centro del pin
+  if (!form.value.latitude || !form.value.longitude) {
+    const lonlat = toLonLat(centerCoords);
+    form.value.latitude = lonlat[1].toFixed(6);
+    form.value.longitude = lonlat[0].toFixed(6);
+  }
+};
+
+const centerOnCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    toast.warning('La geolocalización no está disponible en este navegador.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = fromLonLat([position.coords.longitude, position.coords.latitude]);
+        if (map) {
+          map.getView().setCenter(coords);
+          map.getView().setZoom(16);
+          // mover pin también
+          if (markerFeature) {
+            markerFeature.getGeometry().setCoordinates(coords);
+            form.value.latitude = position.coords.latitude.toFixed(6);
+            form.value.longitude = position.coords.longitude.toFixed(6);
+          }
+        }
+      },
+      () => {
+        toast.warning('No se pudo obtener la ubicación actual.');
+      },
+      { enableHighAccuracy: true }
+  );
+};
+
 const closeModal = () => {
   showModal.value = false;
   loadingCheckin.value = false;
+  // limpiar mapa para evitar fugas
+  if (map) {
+    try {
+      if (clickHandler) map.un('singleclick', clickHandler);
+      if (translateInteraction && map) map.removeInteraction(translateInteraction);
+    } catch (e) { /* noop */ }
+    map.setTarget(null);
+    map = null;
+    markerFeature = null;
+    markerLayer = null;
+    translateInteraction = null;
+    clickHandler = null;
+  }
 };
+
+onUnmounted(() => {
+  if (map) {
+    try {
+      if (clickHandler) map.un('singleclick', clickHandler);
+      if (addCurrentLocationToMap?.intervalId) clearInterval(addCurrentLocationToMap.intervalId);
+    } catch (e) {}
+    map.setTarget(null);
+    map = null;
+  }
+});
 
 const closeConfirmationModal = async () => {
   if (serviceResponse.value.contributesTo) {
@@ -220,7 +390,7 @@ const submitForm = () => {
     return;
   }
 
-  loadingCheckin.value = true; // Inicia el spinner
+  loadingCheckin.value = true;
 
   GamificationService.registerCheckin({...form.value, projectId: route.params.projectId})
       .then((res) => {
@@ -228,7 +398,7 @@ const submitForm = () => {
       })
       .catch(() => toast.error('Ha ocurrido un error en el registro.'))
       .finally(() => {
-        loadingCheckin.value = false; // Detiene el spinner
+        loadingCheckin.value = false;
         closeModal();
       });
 };
@@ -238,6 +408,19 @@ watch(showModal, (isVisible) => {
     const now = new Date();
     const gmtMinus3 = new Date(now.getTime() - 3 * 60 * 60 * 1000); // GMT-3
     form.value.datetime = gmtMinus3.toISOString().slice(0, 16);
+    // asegurar inicialización del mapa si se abre ya con DOM disponible
+    nextTick(() => {
+      // esperar un frame extra si el modal tiene transición
+      setTimeout(() => initializeMap(), 120);
+      // y forzar updateSize poco después
+      setTimeout(() => { if (map) try { map.updateSize(); } catch(e) {} }, 400);
+    });
+  } else {
+    // limpiar mapa cuando se cierra
+    if (map) {
+      map.setTarget(null);
+      map = null;
+    }
   }
 });
 </script>
@@ -256,5 +439,21 @@ watch(showModal, (isVisible) => {
 
 .mr-2 {
   margin-right: 8px;
+}
+
+/* Estilos para el mapa del checkin */
+.checkin-map {
+  width: 100%;
+  height: 360px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Responsive: altura menor en pantallas pequeñas */
+@media (max-width: 600px) {
+  .checkin-map {
+    height: 280px;
+  }
 }
 </style>

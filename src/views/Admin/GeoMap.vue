@@ -109,11 +109,10 @@ const setTooltipContentToAreas = (map, vectorSource) => {
   tooltip.style.pointerEvents = 'none';
 
   const overlay = new Overlay({
-    source: vectorSource,
-    element: tooltip,
+    element: tooltip, // <-- quitar 'source' (no válido)
     offset: [10, 0],
     positioning: 'bottom-left',
-  })
+  });
   map.value.addOverlay(overlay);
   map.value.on('click', (event) => {
     if (!overlay) {
@@ -136,7 +135,7 @@ const setTooltipContentToAreas = (map, vectorSource) => {
 const addCurrentLocationToMap = (features) => {
   if (!map.value) return;
   if (!navigator.geolocation) {
-    toast.warning("La geolocalización no está disponible en este navegador.");
+    //toast.warning("La geolocalización no está disponible en este navegador.");
     return;
   }
 
@@ -521,8 +520,7 @@ const isValidGeoJSON = (geojson) => {
       <v-tabs-window v-model="tab">
         <v-tabs-window-item value="map">
           <v-container>
-            <div id="tooltip"
-                 style="position: absolute; background: white; border: 1px solid black; padding: 5px; display: none; pointer-events: none; font-size: 12px;"></div>
+            <!-- quitar tooltip duplicado aquí (había otro #tooltip) -->
           </v-container>
         </v-tabs-window-item>
 
