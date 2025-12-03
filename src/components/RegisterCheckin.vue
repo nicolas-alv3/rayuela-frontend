@@ -94,7 +94,7 @@
           <div style="border: 2px dashed lightblue; border-radius: 18px"
                v-for="(badge, index) in serviceResponse?._gameStatus?.newBadges" :key="index" class="badge-item">
             <h4>Nueva medalla!</h4>
-            <img :src="badge.imageUrl" alt="Imagen de la insignia"/>
+            <img :src="badge.imageUrl" alt="Imagen de la insignia" style="max-height: 120px; object-fit: contain; margin: 8px auto;"/>"/>
             <h6>{{ badge.name }}</h6>
             <small>{{ badge.description }}</small>
           </div>
