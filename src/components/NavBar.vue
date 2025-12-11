@@ -1,37 +1,36 @@
 <script setup>
 import { useRouter } from 'vue-router';
-import { ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue';
+import UserPFP from "@/components/utils/UserPFP.vue";
 
-const showNav = ref(false)
-const langs = ['ES', 'EN', 'PT']
-const router = useRouter()
-const token = ref(false)
-const username = ref("")
-const profile_image = ref("")
+const showNav = ref(false);
+const langs = ['ES', 'EN', 'PT'];
+const router = useRouter();
+const token = ref(false);
+const username = ref('');
+const profile_image = ref('');
 
-onMounted(async() => {
-  if(localStorage.getItem("token")){
-    token.value = true
-    username.value = localStorage.getItem("username")
-    profile_image.value = localStorage.getItem("profile_image")
-    router.push({ path: '/dashboard' })
+onMounted(async () => {
+  if (localStorage.getItem("token")) {
+    token.value = true;
+    username.value = localStorage.getItem("username");
+    profile_image.value = localStorage.getItem("profile_image");
   }
-})
+});
 
-function logout(){
-  localStorage.clear()
-  localStorage.setItem("msg_logout", "1")
-  token.value = false
-  router.push({ path: '/' })
+function logout() {
+  localStorage.clear();
+  localStorage.setItem("msg_logout", "1");
+  token.value = false;
+  router.push({ path: '/' });
 }
-
 </script>
 
 <template>
   <nav class="navbar is-spaced is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
       <a class="navbar-item">
-        <RouterLink to="/"><img src="@/assets/img/rayuela_logo.jpg" width="112" height="28"></RouterLink>
+        <RouterLink to="/"><img src="@/assets/img/logoRayuela.svg" style="max-height: 2.75em"  alt="log"></RouterLink>
       </a>
 
       <a role="button" class="navbar-burger" @click="showNav = !showNav" :class="{ 'is-active': showNav }" aria-label="menu" aria-expanded="false">
@@ -50,7 +49,6 @@ function logout(){
             </option>
           </select>
         </div>
-        <RouterLink to="/about"><a class="navbar-item">{{ $t("navBar.about") }}</a></RouterLink>
       </div>
 
       <div class="navbar-end">
@@ -58,7 +56,7 @@ function logout(){
           <div v-if="token" class="navbar-container">
             <div class="user-info">
               <span>{{ username }}</span>
-              <img :src="profile_image" width="32" height="32" alt="profile-pic">
+              <UserPFP :username="username" />
             </div>
             <button class="button is-danger" @click="logout()" value="logout">{{ $t("navBar.button_logout") }}</button>
           </div>
@@ -76,7 +74,6 @@ function logout(){
       </div>
     </div>
   </nav>
-
 </template>
 
 <style scoped>
@@ -94,6 +91,10 @@ function logout(){
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.profile-pic img {
+  border-radius: 50%;
 }
 
 @media (max-width: 768px) {

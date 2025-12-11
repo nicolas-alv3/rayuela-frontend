@@ -10,6 +10,8 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@fortawesome/fontawesome-free/css/all.css'
 import App from './App.vue'
+import {fa} from "vuetify/iconsets/fa";
+import {store} from "@/vuex/state";
 
 const vuetify = createVuetify({
     components,
@@ -19,6 +21,7 @@ const vuetify = createVuetify({
         aliases,
         sets: {
             mdi,
+            fa
         },
     },
 })
@@ -26,6 +29,7 @@ const vuetify = createVuetify({
 const app = createApp(App)
 
 app.use(router)
+app.use(store)
 app.use(i18n)
 app.use(vuetify)
 app.mount('#app')
