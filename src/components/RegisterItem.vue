@@ -1,171 +1,96 @@
 <script setup>
-import {ref} from 'vue'
+import {ref} from 'vue';
 import {useRouter} from 'vue-router';
 import {toast} from "vue3-toastify";
 import AuthService from "@/services/AuthService";
+import { useI18n } from 'vue-i18n';
 
-const router = useRouter()
-const username = ref("")
-const email = ref("")
-const password1 = ref("")
-const password2 = ref("")
-const readAgreement = ref("")
-const errors = ref({
-  username: "",
-  email: "",
-  password1: "",
-  password2: "",
-  readAgreement: "",
-})
+const { t } = useI18n();
+
+const router = useRouter();
+const username = ref("");
+const email = ref("");
+const password1 = ref("");
+const password2 = ref("");
+const readAgreement = ref(false);
+const showPassword1 = ref(false);
+const showPassword2 = ref(false);
+const errors = ref({});
+const showSuccessScreen = ref(false);
 
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-function is_valid_form(){
-  const validations = [
-    {
-      field: 'email',
-      isInvalid: !email.value || !isValidEmail(email.value),
-      message: 'El correo no tiene un formato correcto',
-    },
-    {
-      field: 'username',
-      isInvalid: !username.value,
-      message: 'El nombre de usuario es requerido',
-    },
-    {
-      field: 'password1',
-      isInvalid: !password1.value,
-      message: 'La contraseña es requerida',
-    },
-    {
-      field: 'password2',
-      isInvalid: password1.value !== password2.value,
-      message: 'Las contraseñas no coinciden',
-    },
-    {
-      field: 'readAgreement',
-      isInvalid: !readAgreement.value,
-      message: 'Debe aceptar los términos y condiciones primero',
-    },
-  ]
-
-  validations.forEach(validation => {
-    errors.value[validation.field] = validation.isInvalid ? validation.message : '';
-  })
-  return validations.every(v => !v.isInvalid);
+function is_valid_form() {
+  errors.value = {};
+  if (!username.value) errors.value.username = t('register.error_username_required');
+  if (!email.value || !isValidEmail(email.value)) errors.value.email = t('register.error_email_invalid');
+  if (!password1.value) errors.value.password1 = t('register.error_password_required');
+  if (password1.value !== password2.value) errors.value.password2 = t('register.error_passwords_mismatch');
+  if (!readAgreement.value) errors.value.readAgreement = t('register.error_agreement_required');
+  return Object.keys(errors.value).length === 0;
 }
+
 async function signup() {
-  if(is_valid_form()){
+  if (is_valid_form()) {
     const user = {
-      username: username.value,
-      email: email.value,
+      username: username.value?.trim(),
+      email: email.value?.trim(),
       password: password1.value,
       profile_image: "https://example.com/image.jpg",
-      complete_name: username.value,
-    }
-    AuthService.register(user).then( () => {
-      toast.success('¡Registro exitoso!', {autoClose: 2000});
-      setTimeout(() => {
-        router.push({ path: '/login' })
-      },2000)
-    }).catch ( (err) => {
-      Object.keys(err?.response?.data).map( k => {
-        toast.error(err.response.data[k], {autoClose: 3000});
-      })
-    })
+      complete_name: username.value?.trim(),
+    };
+    AuthService.register(user)
+        .then(() => {
+          toast.success(t('register.success_registration'), {autoClose: 3000});
+          showSuccessScreen.value = true;
+          setTimeout(() =>
+              window.location.href = "/login", 3000)
+        })
+        .catch(err => {
+          Object.keys(err?.response?.data).forEach(k => {
+            toast.error(err.response.data[k], {autoClose: 3000});
+          });
+        });
   }
 }
-
 </script>
 
 <template>
-  <div class="container">
-    <h1 class="title">{{ $t("register.title") }}</h1>
-    <br>
-    <form action class="form" @submit.prevent="signup()">
-      <div class="field">
-        <label class="label">{{ $t("register.username_field") }}</label>
-        <div class="control">
-          <input class="input" type="text" v-model="username" :placeholder="$t('register.username_placeholder')">
-          <small v-if="errors.username">
-            <p class="help is-danger"> {{ errors.username }}</p>
-          </small>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="label">{{ $t("register.email_field") }}</label>
-        <div class="control">
-          <input class="input" type="text" v-model="email" :placeholder="$t('register.email_placeholder')">
-          <small v-if="errors.email">
-            <p class="help is-danger"> {{ errors.email }}</p>
-          </small>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="label">{{ $t("register.password1") }}</label>
-        <div class="control">
-          <input class="input" type="password" v-model="password1" :placeholder="$t('register.password1_placeholder')">
-          <small v-if="errors.password1">
-            <p class="help is-danger"> {{ errors.password1 }}</p>
-          </small>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="label">{{ $t("register.password2") }}</label>
-        <div class="control">
-          <input class="input" type="password" v-model="password2" :placeholder="$t('register.password2_placeholder')">
-          <small v-if="errors.password2">
-            <p class="help is-danger"> {{ errors.password2 }}</p>
-          </small>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="control">
-          <label class="checkbox">
-            <input type="checkbox" v-model="readAgreement">
-            {{ $t("register.checkbox") }}<a href="#">{{ $t("register.terms") }}</a>
-          </label>
-          <small v-if="errors.readAgreement">
-            <p class="help is-danger"> {{ errors.readAgreement }}</p>
-          </small>
-        </div>
-      </div>
-
-      <div class="field is-grouped buttons">
-        <div class="control left">
-          <button class="button is-link" type="submit" value="register">{{ $t("register.button_signup") }}</button>
-        </div>
-        <div class="right">
-          <RouterLink to="/login"><button class="button is-link is-light">{{ $t("register.button_login") }}</button></RouterLink>
-        </div>
-      </div>
-    </form>
-  </div>
+  <v-container max-width="400px">
+    <template v-if="showSuccessScreen">
+      <h1 class="text-center mb-4">{{ $t("register.success_title") }}</h1>
+      <p class="text-center">{{ $t("register.success_message") }}</p>
+      <hr>
+      <v-btn block color="primary" @click="router.push('/login')">{{ $t("register.go_home") }}</v-btn>
+    </template>
+    <template v-else>
+      <h1 class="text-center mb-4">{{ $t("register.title") }}</h1>
+      <v-form @submit.prevent="signup">
+        <v-text-field v-model="username" :label="$t('register.username_field')" :error-messages="errors.username"/>
+        <v-text-field v-model="email" :label="$t('register.email_field')" :error-messages="errors.email"/>
+        <v-text-field
+            v-model="password1"
+            :label="$t('register.password1')"
+            :type="showPassword1 ? 'text' : 'password'"
+            :error-messages="errors.password1"
+            :append-inner-icon="showPassword1 ? 'mdi-eye' : 'mdi-eye-off'"
+            @click:append-inner="showPassword1 = !showPassword1"
+        />
+        <v-text-field
+            v-model="password2"
+            :label="$t('register.password2')"
+            :type="showPassword2 ? 'text' : 'password'"
+            :error-messages="errors.password2"
+            :append-inner-icon="showPassword2 ? 'mdi-eye' : 'mdi-eye-off'"
+            @click:append-inner="showPassword2 = !showPassword2"
+        />
+        <v-checkbox v-model="readAgreement" :label="$t('register.checkbox')" :error-messages="errors.readAgreement"/>
+        <v-btn block color="primary" type="submit">{{ $t("register.button_signup") }}</v-btn>
+        <v-btn block color="secondary" to="/login" variant="text">{{ $t("register.button_login") }}</v-btn>
+      </v-form>
+    </template>
+  </v-container>
 </template>
-
-<style scoped>
-.container{
-  max-width: 360px;
-}
-
-.title{
-  text-align: center;
-}
-
-.buttons{
-  display: flex;
-  justify-content: space-between;
-}
-
-.left, .right{
-  display: flex;
-  flex-direction: column;
-}
-</style>

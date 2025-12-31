@@ -1,82 +1,128 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
-import authService from "@/services/AuthService";
+import AuthService from "@/services/AuthService";
+import { useI18n } from 'vue-i18n';
 
-const router = useRouter()
-const username = ref("")
-const password = ref("")
+const { t } = useI18n();
 
-onMounted( () =>{
-  if(localStorage.getItem("token")){
-    router.push({ path: '/dashboard' })
+const router = useRouter();
+const username = ref("");
+const password = ref("");
+const showPassword = ref(false);
+
+onMounted(() => {
+  if (localStorage.getItem("token")) {
+    router.push({ path: '/dashboard' });
   }
-})
+});
 
 async function login() {
-  const user = {"username": username.value, "password": password.value}
-  authService.loginWithPw(user)
-      .then( () => {
-        router.push({ path: '/dashboard' })
-        //location.reload();
+  const user = { username: username.value, password: password.value };
+  AuthService.loginWithPw(user)
+      .then(() => {
+        AuthService.getUser()
+            .then(() => {
+              router.push("/dashboard");
+              location.reload();
+            })
+            .catch(error => {
+              console.log(error);
+            });
       })
-      .catch ( () => {
-        toast.error("Credenciales de acceso incorrectas", {autoClose: 3000});
-      })
+      .catch(() => {
+        toast.error(t("login.error_credentials"), { autoClose: 3000 });
+      });
 }
-
 </script>
 
 <template>
-  <div class="container">
-    <h1 class="title">{{ $t("login.title") }}</h1>
-    <br>
-    <form action class="form" @submit.prevent="login">
-      <div class="field">
-        <label class="label">{{ $t("login.username_field") }}</label>
-        <div class="control">
-          <input class="input" type="text" v-model="username" :placeholder="$t('login.username_placeholder')">
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="label">{{ $t("login.password") }}</label>
-        <div class="control">
-          <input class="input" type="password" v-model="password" :placeholder="$t('login.password_placeholder')">
-        </div>
-      </div>
-
-      <div class="field is-grouped buttons">
-        <div class="control left">
-          <button class="button is-success" type="submit" value="login">{{ $t("login.button_login") }}</button>
-        </div>
-        <div class="right">
-          <RouterLink to="/register"><button class="button is-link is-light">{{ $t("login.button_signup") }}</button></RouterLink>
-        </div>
-      </div>
-    </form>
-  </div>
+  <v-container class="container">
+    <v-card class="login-card" elevation="2">
+      <v-card-title class="title">
+        {{ $t("login.title") }}
+      </v-card-title>
+      <v-card-text>
+        <v-form @submit.prevent="login">
+          <v-text-field
+              v-model="username"
+              :label="$t('login.username_field')"
+              :placeholder="$t('login.username_placeholder')"
+              outlined
+              dense
+              clearable
+              required
+          />
+          <v-text-field
+              v-model="password"
+              :label="$t('login.password')"
+              :placeholder="$t('login.password_placeholder')"
+              :type="showPassword ? 'text' : 'password'"
+              outlined
+              dense
+              clearable
+              required
+              :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+              @click:append-inner="showPassword = !showPassword"
+          />
+          <v-btn
+              color="success"
+              type="submit"
+              block
+              class="login-button"
+          >
+            {{ $t("login.button_login") }}
+          </v-btn>
+        </v-form>
+      </v-card-text>
+      <v-divider></v-divider>
+      <v-card-actions class="actions">
+        <RouterLink to="/forgot-password" class="forgot-password-link">
+          {{ $t("login.forgot_password") }}
+        </RouterLink>
+        <RouterLink to="/register">
+          <v-btn color="primary" outlined>
+            {{ $t("login.button_signup") }}
+          </v-btn>
+        </RouterLink>
+      </v-card-actions>
+    </v-card>
+  </v-container>
 </template>
 
 <style scoped>
-.container{
-  max-width: 360px;
+.container {
+  max-width: 400px;
+  margin: auto;
+  padding: 20px;
 }
 
-.title{
+.login-card {
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.title {
   text-align: center;
+  font-size: 24px;
+  font-weight: bold;
 }
 
-.buttons{
+.login-button {
+  margin-top: 20px;
+}
+
+.actions {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
 }
 
-.left, .right{
-  display: flex;
-  flex-direction: column;
+.forgot-password-link {
+  font-size: 14px;
+  text-decoration: none;
 }
-
 </style>
