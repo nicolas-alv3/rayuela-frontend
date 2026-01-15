@@ -3,14 +3,14 @@
     <v-card class="pa-4 mb-6">
       <v-row>
         <v-col cols="12" md="6">
-          <v-img :src="project.image" alt="Imagen del proyecto" class="mb-4" contain/>
+          <v-img :src="project.image" :alt="$t('project.image_alt')" class="mb-4" contain/>
         </v-col>
         <v-col cols="12" md="6">
           <h2>{{ project.name }}</h2>
           <p class="text-subtitle-1 mb-3" v-html="project.description.replace(/\n/g, '<br>')"></p>
           <v-btn color="green" block large @click="goToLogin">
             <v-icon left size="large">mdi-account-plus</v-icon>
-            Inscribirse
+            {{ $t('project.button_subscribe') }}
           </v-btn>
         </v-col>
       </v-row>

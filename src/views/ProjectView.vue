@@ -280,9 +280,9 @@ const subscribe = () => {
       });
 }
 
-const taskHeaders = [
-  {title: 'Detalle de la Tarea', value: 'formatted'},
-];
+const taskHeaders = computed(() => [
+  {title: t('project.task_detail_title'), value: 'formatted'},
+]);
 
 const handleModalClosed = async () => {
   project.value = await ProjectsService.getProjectById(route.params.projectId);
@@ -310,7 +310,7 @@ const shareProject = () => {
 
 const formattedTasks = computed(() => {
   return tasks.value.map(task => ({
-    formatted: `[${task.areaGeoJSON.properties.id}] ${task.points}pts - ${task.timeInterval.name} - ${task.type}`,
+    formatted: `[${task.areaGeoJSON.properties.id}] ${task.points}${t('common.points_suffix')} - ${task.timeInterval.name} - ${task.type}`,
     solved: task.solved,
     solvedBy: task.solvedBy || '',
     intervalDescription: task.timeInterval?.description || '',
