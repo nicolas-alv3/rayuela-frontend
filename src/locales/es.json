@@ -218,6 +218,7 @@
         "project_image_label": "URL de la imagen",
         "project_website_label": "Sitio web del proyecto",
         "adaptation_type_label": "Tipo de adaptación",
+        "adaptations": "Adaptaciones",
         "leaderboard_type_label": "Tipo de leaderboard",
         "recommendation_algorithm_label": "Algoritmo de recomendación",
         "manual_location_switch": "Checkins con ubicación manual",
@@ -281,7 +282,16 @@
         "tasks_save_success": "Tareas guardadas con éxito",
         "tasks_save_error": "Error al guardar las tareas",
         "task_auto_name": "Tarea {type} - {timeInterval} - Área {area}",
-        "task_auto_desc": "Automáticamente generada para {type}, {timeInterval}, área {area}"
+        "task_auto_desc": "Automáticamente generada para {type}, {timeInterval}, área {area}",
+        "general_config": "Configuración General",
+        "save_general_config": "Guardar Configuración General",
+        "general_config_updated_success": "Configuración general actualizada exitosamente",
+        "general_config_save_error": "Error al actualizar la configuración general",
+        "badge_deleted_success": "Insignia eliminada exitosamente",
+        "score_rule_deleted_success": "Regla de puntaje eliminada exitosamente",
+        "confirm_delete_badge": "¿Estás seguro que quieres eliminar la insignia {name}?",
+        "confirm_delete_score_rule": "¿Estás seguro que quieres eliminar la regla de puntaje {name}?",
+        "rule_name_label": "Nombre de la regla"
     },
     "map": {
         "inside_area": "Estás dentro del área \"{id}\"",

@@ -211,6 +211,7 @@
         "project_image_label": "URL da imagem",
         "project_website_label": "Site do projeto",
         "adaptation_type_label": "Tipo de adaptação",
+        "adaptations": "Adaptações",
         "leaderboard_type_label": "Tipo de leaderboard",
         "recommendation_algorithm_label": "Algoritmo de recomendação",
         "manual_location_switch": "Checkins com localização manual",
